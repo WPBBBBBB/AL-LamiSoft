@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -30,7 +30,6 @@ import {
 } from "@/components/ui/select"
 import { getCustomers, createPayment, type Customer } from "@/lib/supabase-operations"
 import { toast } from "sonner"
-import { Search } from "lucide-react"
 
 const formSchema = z.object({
   customer_id: z.string().min(1, { message: "يرجى اختيار الزبون" }),
@@ -50,6 +49,8 @@ export function PaymentModal({ open, onOpenChange, onSuccess }: PaymentModalProp
   const [isLoading, setIsLoading] = useState(false)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectOpen, setSelectOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -66,8 +67,24 @@ export function PaymentModal({ open, onOpenChange, onSuccess }: PaymentModalProp
     if (open) {
       loadCustomers()
       form.reset()
+      setSearchQuery("")
+      setSelectOpen(false)
     }
   }, [open])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setSelectOpen(false)
+      }
+    }
+    if (selectOpen) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [selectOpen])
 
   async function loadCustomers() {
     try {
@@ -131,70 +148,57 @@ export function PaymentModal({ open, onOpenChange, onSuccess }: PaymentModalProp
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>اختيار الزبون *</FormLabel>
-                  <div className="space-y-2">
-                    <div className="relative">
-                      <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="ابحث عن زبون..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pr-10"
-                      />
-                    </div>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="اختر الزبون" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {filteredCustomers.length === 0 ? (
-                          <div className="p-4 text-center text-sm text-muted-foreground">
-                            لا يوجد عملاء
+                  <div className="relative" ref={dropdownRef}>
+                    <Input
+                      placeholder="ابحث عن زبون..."
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value)
+                        setSelectOpen(true)
+                      }}
+                      onFocus={() => setSelectOpen(true)}
+                      className="w-full"
+                    />
+                    {selectOpen && filteredCustomers.length > 0 && (
+                      <div 
+                        className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-[300px] overflow-y-auto"
+                      >
+                        {filteredCustomers.map((customer) => (
+                          <div
+                            key={customer.id}
+                            onMouseDown={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              field.onChange(customer.id)
+                              setSelectOpen(false)
+                              setSearchQuery("")
+                            }}
+                            className="px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground flex flex-col"
+                          >
+                            <span>{customer.customer_name}</span>
+                            {customer.phone_number && (
+                              <span className="text-xs text-muted-foreground">
+                                {customer.phone_number}
+                              </span>
+                            )}
                           </div>
-                        ) : (
-                          filteredCustomers.map((customer) => (
-                            <SelectItem key={customer.id} value={customer.id}>
-                              <div className="flex flex-col">
-                                <span>{customer.customer_name}</span>
-                                {customer.phone_number && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {customer.phone_number}
-                                  </span>
-                                )}
-                              </div>
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+                        ))}
+                      </div>
+                    )}
+                    {selectOpen && filteredCustomers.length === 0 && searchQuery && (
+                      <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md">
+                        <div className="p-4 text-center text-sm text-muted-foreground">
+                          لم يتم العثور على زبون
+                        </div>
+                      </div>
+                    )}
+                    {field.value && (
+                      <div className="mt-2 p-2 bg-muted rounded-md text-sm">
+                        <span className="font-medium">المختار:</span>{" "}
+                        {customers.find(c => c.id === field.value)?.customer_name}
+                      </div>
+                    )}
                   </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* نوع الدفعة */}
-            <FormField
-              control={form.control}
-              name="transaction_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>نوع الدفعة *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="اختر نوع الدفعة" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="قبض">قبض</SelectItem>
-                      <SelectItem value="ايداع">ايداع</SelectItem>
-                      <SelectItem value="سحب">سحب</SelectItem>
-                      <SelectItem value="صرف">صرف</SelectItem>
-                      <SelectItem value="قرض">قرض</SelectItem>
-                    </SelectContent>
-                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -223,6 +227,32 @@ export function PaymentModal({ open, onOpenChange, onSuccess }: PaymentModalProp
               )}
             />
 
+            {/* نوع العملية */}
+            <FormField
+              control={form.control}
+              name="transaction_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>نوع العملية *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="اختر نوع العملية" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="قبض">قبض</SelectItem>
+                      <SelectItem value="ايداع">ايداع</SelectItem>
+                      <SelectItem value="سحب">سحب</SelectItem>
+                      <SelectItem value="صرف">صرف</SelectItem>
+                      <SelectItem value="قرض">قرض</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {/* المبلغ */}
             <FormField
               control={form.control}
@@ -233,8 +263,7 @@ export function PaymentModal({ open, onOpenChange, onSuccess }: PaymentModalProp
                   <FormControl>
                     <Input
                       type="number"
-                      step="0.01"
-                      placeholder="0.00"
+                      placeholder="أدخل المبلغ"
                       {...field}
                     />
                   </FormControl>
@@ -243,7 +272,6 @@ export function PaymentModal({ open, onOpenChange, onSuccess }: PaymentModalProp
               )}
             />
 
-            {/* الملاحظات */}
             <FormField
               control={form.control}
               name="notes"

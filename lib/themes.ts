@@ -8,10 +8,32 @@ export interface Theme {
     surface: string
     text: string
     accent: string
+    tableHeader?: string
+    tableRow?: string
+    tableRowHover?: string
+    tableRowSelected?: string
+    border?: string
   }
 }
 
 export const themes: Theme[] = [
+  {
+    id: "dark-mode",
+    name: "الوضع الليلي",
+    colors: {
+      primary: "#BB86FC",
+      secondary: "#03DAC6",
+      background: "#121212",
+      surface: "#1E1E1E",
+      text: "#E1E1E1",
+      accent: "#03DAC6",
+      tableHeader: "#2C2C2C",
+      tableRow: "#1E1E1E",
+      tableRowHover: "#2C2C2C",
+      tableRowSelected: "#3700B3",
+      border: "#383838",
+    },
+  },
   {
     id: "snow-white",
     name: "أبيض ثلجي",
@@ -22,6 +44,11 @@ export const themes: Theme[] = [
       surface: "#F2F2F2",
       text: "#1A1A1A",
       accent: "#3B82F6",
+      tableHeader: "#E8E8E8",
+      tableRow: "#FFFFFF",
+      tableRowHover: "#F5F5F5",
+      tableRowSelected: "#E3F2FD",
+      border: "#E0E0E0",
     },
   },
   {
@@ -34,6 +61,11 @@ export const themes: Theme[] = [
       surface: "#121212",
       text: "#EDEDED",
       accent: "#8B5CF6",
+      tableHeader: "#1A1A1A",
+      tableRow: "#0A0A0A",
+      tableRowHover: "#1F1F1F",
+      tableRowSelected: "#2C1F4F",
+      border: "#2A2A2A",
     },
   },
   {
@@ -46,6 +78,11 @@ export const themes: Theme[] = [
       surface: "#E1F5FF",
       text: "#0B1C2C",
       accent: "#1B98E0",
+      tableHeader: "#D4EDFD",
+      tableRow: "#EAF6FE",
+      tableRowHover: "#D9F0FE",
+      tableRowSelected: "#C2E5FF",
+      border: "#9DD0F5",
     },
   },
   {
@@ -353,13 +390,65 @@ export const themes: Theme[] = [
 export function applyTheme(theme: Theme) {
   const root = document.documentElement
   
-  // Apply theme colors to CSS variables - هذه المتغيرات لا تتأثر بالوضع الداكن
+  // Helper to generate table colors if not provided
+  const isDark = parseInt(theme.colors.background.slice(1, 3), 16) < 128
+  
+  const tableHeader = theme.colors.tableHeader || (isDark 
+    ? lightenColor(theme.colors.surface, 15) 
+    : darkenColor(theme.colors.surface, 8))
+    
+  const tableRow = theme.colors.tableRow || theme.colors.background
+  
+  const tableRowHover = theme.colors.tableRowHover || (isDark
+    ? lightenColor(theme.colors.surface, 10)
+    : darkenColor(theme.colors.surface, 5))
+    
+  const tableRowSelected = theme.colors.tableRowSelected || (isDark
+    ? addOpacity(theme.colors.accent, 0.25)
+    : addOpacity(theme.colors.accent, 0.15))
+    
+  const border = theme.colors.border || (isDark
+    ? lightenColor(theme.colors.background, 25)
+    : darkenColor(theme.colors.background, 12))
+  
+  // Apply all theme colors to CSS variables
   root.style.setProperty("--theme-primary", theme.colors.primary)
   root.style.setProperty("--theme-secondary", theme.colors.secondary)
+  root.style.setProperty("--theme-background", theme.colors.background)
+  root.style.setProperty("--theme-surface", theme.colors.surface)
+  root.style.setProperty("--theme-text", theme.colors.text)
   root.style.setProperty("--theme-accent", theme.colors.accent)
+  root.style.setProperty("--theme-table-header", tableHeader)
+  root.style.setProperty("--theme-table-row", tableRow)
+  root.style.setProperty("--theme-table-row-hover", tableRowHover)
+  root.style.setProperty("--theme-table-row-selected", tableRowSelected)
+  root.style.setProperty("--theme-border", border)
   
-  // لا نغير background أو text مباشرة، نتركها للـ dark mode
-  // الخلفية والنص يتحددون من Tailwind CSS حسب الـ dark mode
+  // Apply to document body for immediate effect
+  document.body.style.backgroundColor = theme.colors.background
+  document.body.style.color = theme.colors.text
+}
+
+// Helper functions
+function lightenColor(hex: string, percent: number): string {
+  const num = parseInt(hex.replace("#", ""), 16)
+  const amt = Math.round(2.55 * percent)
+  const R = Math.min(255, (num >> 16) + amt)
+  const G = Math.min(255, ((num >> 8) & 0x00ff) + amt)
+  const B = Math.min(255, (num & 0x0000ff) + amt)
+  return "#" + ((R << 16) | (G << 8) | B).toString(16).padStart(6, "0")
+}
+
+function darkenColor(hex: string, percent: number): string {
+  return lightenColor(hex, -percent)
+}
+
+function addOpacity(hex: string, opacity: number): string {
+  const num = parseInt(hex.replace("#", ""), 16)
+  const R = (num >> 16) & 0xff
+  const G = (num >> 8) & 0xff
+  const B = num & 0xff
+  return `rgba(${R}, ${G}, ${B}, ${opacity})`
 }
 
 export function getThemeById(id: string): Theme | undefined {

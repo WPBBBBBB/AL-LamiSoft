@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import "./globals.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { SettingsProvider } from "@/components/providers/settings-provider";
+import { ThemeApplier } from "@/components/providers/theme-applier";
 import { AuthProvider } from "@/contexts/auth-context";
 import { ProtectedRoute } from "@/components/protected-route";
 import Header from "@/components/layout/header";
@@ -46,25 +47,27 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SettingsProvider>
-            <AuthProvider>
-              <ProtectedRoute>
-                {isLoginPage ? (
-                  <main className="min-h-screen">
-                    {children}
-                  </main>
-                ) : (
-                  <div className="relative flex min-h-screen">
-                    <Sidebar />
-                    <div className="flex-1" style={{ marginLeft: "var(--sidebar-width, 288px)" }}>
-                      <Header />
-                      <main className="container mx-auto p-6">
-                        {children}
-                      </main>
+            <ThemeApplier>
+              <AuthProvider>
+                <ProtectedRoute>
+                  {isLoginPage ? (
+                    <main className="min-h-screen">
+                      {children}
+                    </main>
+                  ) : (
+                    <div className="relative flex min-h-screen">
+                      <Sidebar />
+                      <div className="flex-1" style={{ marginLeft: "var(--sidebar-width, 288px)" }}>
+                        <Header />
+                        <main className="container mx-auto p-6">
+                          {children}
+                        </main>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </ProtectedRoute>
-            </AuthProvider>
+                  )}
+                </ProtectedRoute>
+              </AuthProvider>
+            </ThemeApplier>
           </SettingsProvider>
           <Toaster />
         </ThemeProvider>

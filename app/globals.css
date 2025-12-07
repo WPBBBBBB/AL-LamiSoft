@@ -134,32 +134,110 @@
     --theme-surface: #F2F2F2;
     --theme-text: #1A1A1A;
     --theme-accent: #3B82F6;
+    --theme-table-header: #E8E8E8;
+    --theme-table-row: #FFFFFF;
+    --theme-table-row-hover: #F5F5F5;
+    --theme-table-row-selected: #E3F2FD;
+    --theme-border: #E0E0E0;
   }
   
   body {
     font-family: var(--font-family);
-    @apply bg-background text-foreground;
+    background-color: var(--theme-background);
+    color: var(--theme-text);
   }
   
   /* Apply theme colors to common elements */
   .theme-bg {
-    background-color: var(--theme-background);
+    background-color: var(--theme-background) !important;
   }
   
   .theme-surface {
-    background-color: var(--theme-surface);
+    background-color: var(--theme-surface) !important;
   }
   
   .theme-text {
-    color: var(--theme-text);
+    color: var(--theme-text) !important;
   }
   
   .theme-primary {
-    color: var(--theme-primary);
+    color: var(--theme-primary) !important;
+  }
+  
+  .theme-primary-bg {
+    background-color: var(--theme-primary) !important;
   }
   
   .theme-accent {
-    color: var(--theme-accent);
+    color: var(--theme-accent) !important;
+  }
+  
+  .theme-accent-bg {
+    background-color: var(--theme-accent) !important;
+  }
+  
+  .theme-border {
+    border-color: var(--theme-border) !important;
+  }
+  
+  /* Table theme styles */
+  .theme-table {
+    background-color: var(--theme-background);
+    color: var(--theme-text);
+  }
+  
+  .theme-table thead {
+    background-color: var(--theme-table-header);
+  }
+  
+  .theme-table tbody tr {
+    background-color: var(--theme-table-row);
+    border-bottom-color: var(--theme-border);
+  }
+  
+  .theme-table tbody tr:hover {
+    background-color: var(--theme-table-row-hover);
+  }
+  
+  .theme-table tbody tr.selected {
+    background-color: var(--theme-table-row-selected);
+  }
+  
+  /* Card theme styles */
+  .theme-card {
+    background-color: var(--theme-surface);
+    color: var(--theme-text);
+    border-color: var(--theme-border);
+  }
+  
+  /* Button theme styles */
+  .theme-button-primary {
+    background-color: var(--theme-primary);
+    color: var(--theme-background);
+  }
+  
+  .theme-button-primary:hover {
+    opacity: 0.9;
+  }
+  
+  .theme-button-accent {
+    background-color: var(--theme-accent);
+    color: var(--theme-background);
+  }
+  
+  .theme-button-accent:hover {
+    opacity: 0.9;
+  }
+  
+  /* Input theme styles */
+  .theme-input {
+    background-color: var(--theme-background);
+    color: var(--theme-text);
+    border-color: var(--theme-border);
+  }
+  
+  .theme-input:focus {
+    border-color: var(--theme-primary);
   }
   
   /* Smooth transitions for theme changes */

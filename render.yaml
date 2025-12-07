@@ -1,0 +1,18 @@
+# Render.com deployment configuration for Next.js 16 (Turbopack)
+# Docs: https://render.com/docs/deploy-nextjs
+
+services:
+  - type: web
+    name: al-lamisoft-app
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        value: https://jpupsfzitqvdrbwzlvnk.supabase.co
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpwdXBzZnppdHF2ZHJid3psdm5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4NzUzODksImV4cCI6MjA4MDQ1MTM4OX0.aSj_Il--QY9B2VnGyDj-u9bpYS_vxe1TxlerAT-qrv8
+      # أضف هنا أي متغيرات بيئة سرية أخرى (API keys, إلخ)

@@ -175,12 +175,16 @@ export async function createSale(
   currencyType: "دينار" | "دولار"
 ): Promise<{ success: boolean; saleId?: string; error?: string }> {
   try {
+    console.log("Creating sale with data:", { saleMain, saleDetails, storeId, payType, currencyType })
+    
     // 1) إدخال السجل الرئيسي
     const { data: mainData, error: mainError } = await supabase
       .from("tb_salesmain")
       .insert([saleMain])
       .select()
       .single()
+
+    console.log("Insert result:", { mainData, mainError })
 
     if (mainError) throw mainError
 
@@ -200,18 +204,23 @@ export async function createSale(
       .from("tb_salesdetails")
       .insert(detailsWithMainId)
 
+    console.log("Details insert result:", { detailsError })
     if (detailsError) throw detailsError
 
     // 3) تحديث المخزون (تنقيص الكميات المباعة)
+    console.log("Starting inventory reduction...")
     for (const detail of saleDetails) {
+      console.log("Reducing inventory for:", detail.productcode, "qty:", detail.quantity)
       await reduceInventoryQuantity(
         storeId,
         detail.productcode,
         detail.quantity
       )
     }
+    console.log("Inventory reduction completed")
 
     // 4) تحديث رصيد الزبون (فقط إذا كان نوع الدفع آجل)
+    console.log("Checking payment type:", payType)
     if (payType === "آجل") {
       // حساب المبلغ المتبقي بعد خصم المبلغ الواصل
       const remainingIQD = saleMain.finaltotaliqd - saleMain.amountreceivediqd
@@ -221,11 +230,13 @@ export async function createSale(
       const balanceIQD = currencyType === "دينار" ? remainingIQD : 0
       const balanceUSD = currencyType === "دولار" ? remainingUSD : 0
 
+      console.log("Updating customer balance:", { balanceIQD, balanceUSD })
       await updateCustomerBalance(
         saleMain.customerid,
         balanceIQD,
         balanceUSD
       )
+      console.log("Customer balance updated")
 
       // 5) تسجيل الدفعة الواصلة إن وجدت
       if (saleMain.amountreceivediqd > 0 || saleMain.amountreceivedusd > 0) {
@@ -240,16 +251,45 @@ export async function createSale(
           notes: paymentNote,
           pay_date: new Date().toISOString(),
           salesmainid: saleMainId,
+          paymentamountiqd: saleMain.amountreceivediqd,
+          paymentamountusd: saleMain.amountreceivedusd,
+          paymenttype: "قبض",
         }])
 
-        if (paymentError) throw paymentError
+        if (paymentError) {
+          console.error("Payment insert error:", paymentError)
+          throw paymentError
+        }
       }
     }
 
     return { success: true, saleId: saleMainId }
   } catch (error) {
+    console.error("=== ERROR CAUGHT ===")
     console.error("Error creating sale:", error)
-    return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
+    console.error("Error type:", typeof error)
+    console.error("Error constructor:", error?.constructor?.name)
+    
+    // محاولة الحصول على معلومات أكثر
+    if (error && typeof error === 'object') {
+      console.error("Error keys:", Object.keys(error))
+      console.error("Error entries:", Object.entries(error))
+      for (const [key, value] of Object.entries(error)) {
+        console.error(`  ${key}:`, value)
+      }
+    }
+    
+    console.error("Error details:", JSON.stringify(error, null, 2))
+    console.error("Error string:", String(error))
+    console.error("===================")
+    
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : (error && typeof error === 'object' && 'message' in error)
+        ? String(error.message)
+        : String(error)
+    
+    return { success: false, error: errorMessage }
   }
 }
 
@@ -263,6 +303,8 @@ async function reduceInventoryQuantity(
   quantitySold: number
 ): Promise<void> {
   try {
+    console.log(`Attempting to reduce inventory: store=${storeId}, product=${productCode}, qty=${quantitySold}`)
+    
     // جلب المادة الحالية
     const { data: item, error: fetchError } = await supabase
       .from("tb_inventory")
@@ -271,7 +313,12 @@ async function reduceInventoryQuantity(
       .eq("productcode", productCode)
       .single()
 
-    if (fetchError) throw fetchError
+    console.log("Inventory fetch result:", { item, fetchError })
+
+    if (fetchError) {
+      console.error("Fetch error details:", fetchError)
+      throw new Error(`خطأ في جلب المادة: ${fetchError.message || JSON.stringify(fetchError)}`)
+    }
 
     if (!item) {
       throw new Error(`المادة ${productCode} غير موجودة في المخزن`)
@@ -290,7 +337,12 @@ async function reduceInventoryQuantity(
       .update({ quantity: newQuantity })
       .eq("id", item.id)
 
-    if (updateError) throw updateError
+    if (updateError) {
+      console.error("Update error details:", updateError)
+      throw new Error(`خطأ في تحديث الكمية: ${updateError.message || JSON.stringify(updateError)}`)
+    }
+    
+    console.log(`Successfully reduced inventory for ${productCode}`)
   } catch (error) {
     console.error("Error reducing inventory:", error)
     throw error
@@ -307,6 +359,8 @@ async function updateCustomerBalance(
   additionalUSD: number
 ): Promise<void> {
   try {
+    console.log(`Updating customer balance: id=${customerId}, IQD=${additionalIQD}, USD=${additionalUSD}`)
+    
     // جلب الرصيد الحالي
     const { data: customer, error: fetchError } = await supabase
       .from("customers")
@@ -314,7 +368,12 @@ async function updateCustomerBalance(
       .eq("id", customerId)
       .single()
 
-    if (fetchError) throw fetchError
+    console.log("Customer fetch result:", { customer, fetchError })
+
+    if (fetchError) {
+      console.error("Customer fetch error:", fetchError)
+      throw new Error(`خطأ في جلب بيانات الزبون: ${fetchError.message || JSON.stringify(fetchError)}`)
+    }
 
     // تحديث الرصيد (إضافة الرصيد الجديد)
     const { error: updateError } = await supabase
@@ -326,7 +385,14 @@ async function updateCustomerBalance(
       })
       .eq("id", customerId)
 
-    if (updateError) throw updateError
+    console.log("Customer update result:", { updateError })
+
+    if (updateError) {
+      console.error("Customer update error:", updateError)
+      throw new Error(`خطأ في تحديث رصيد الزبون: ${updateError.message || JSON.stringify(updateError)}`)
+    }
+    
+    console.log("Customer balance updated successfully")
   } catch (error) {
     console.error("Error updating customer balance:", error)
     throw error
